@@ -1,12 +1,32 @@
 #include <stdio.h>
 
 
+/* Seed sample reminders (for quick testing) */
+void seed_sample(ReminderList *list) {
+    Reminder r;
+    r.id = list->next_id++;
+    strncpy(r.title, "Project meeting", TITLE_LEN);
+    strncpy(r.category, "Work", CAT_LEN);
+    strncpy(r.description, "Discuss module integration", DESC_LEN);
+    r.year = 2025; r.month = 12; r.day = 05; r.hour = 10; r.minute = 30; r.completed = 0;
+    ensure_capacity(list); list->data[list->size++] = r;
 
+    r.id = list->next_id++;
+    strncpy(r.title, "Buy groceries", TITLE_LEN);
+    strncpy(r.category, "Personal", CAT_LEN);
+    strncpy(r.description, "Milk, eggs, rice", DESC_LEN);
+    r.year = 2025; r.month = 12; r.day = 02; r.hour = 18; r.minute = 00; r.completed = 0;
+    ensure_capacity(list); list->data[list->size++] = r;
 
+    r.id = list->next_id++;
+    strncpy(r.title, "Dentist appointment", TITLE_LEN);
+    strncpy(r.category, "Health", CAT_LEN);
+    strncpy(r.description, "Annual check-up", DESC_LEN);
+    r.year = 2025; r.month = 12; r.day = 15; r.hour = 14; r.minute = 00; r.completed = 0;
+    ensure_capacity(list); list->data[list->size++] = r;
+}
 
-
-
-
+/* --- Main menu --- */
 void print_menu(void) {
     puts("\n--- Smart Reminder Pro ---");
     puts("1. Add reminder");
@@ -26,7 +46,7 @@ int main() {
     init_list(&list);
 
     int choice;
-    for (;;) {
+    for (;;) { case used .
         print_menu();
         if (scanf("%d", &choice) != 1) {
             printf("Invalid input. Try again.\n");
