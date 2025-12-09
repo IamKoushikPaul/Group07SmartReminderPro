@@ -1,6 +1,31 @@
 #include <stdio.h>
 
 
+
+
+
+/* Optional: delete reminder (not requested but handy) */
+void delete_reminder(ReminderList *list) {
+    int id;
+    printf("Enter reminder ID to delete: ");
+    if (scanf("%d", &id) != 1) {
+        printf("Invalid input.\n");
+        flush_input();
+        return;
+    }
+    flush_input();
+    for (size_t i = 0; i < list->size; ++i) {
+        if (list->data[i].id == id) {
+            // Move last into position i
+            list->data[i] = list->data[list->size - 1];
+            list->size--;
+            printf("Reminder %d deleted.\n", id);
+            return;
+        }
+    }
+    printf("No reminder found with ID %d.\n", id);
+}
+
 /* Seed sample reminders (for quick testing) */
 void seed_sample(ReminderList *list) {
     Reminder r;
@@ -67,13 +92,6 @@ int main() {
             default: printf("Unknown option. Try again.\n"); break;
         }
     }
-
-
-
-
-
-
-
 
 
 
