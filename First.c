@@ -22,6 +22,10 @@ typedef struct {
 Reminder reminders[MAX_REMINDERS];
 int total_reminders = 0;
 
+// Function prototypes
+void loadReminders();
+void saveReminders();
+
 int main() {
     loadReminders();
 
@@ -69,4 +73,33 @@ int main() {
     } while(choice != 8);
 
     return 0;
+}
+
+// Load reminders from file
+void loadReminders() {
+    FILE *file = fopen(FILENAME, "rb");
+    if (file == NULL) {
+        total_reminders = 0;
+        return;
+    }
+
+    fread(&total_reminders, sizeof(int), 1, file);
+    fread(reminders, sizeof(Reminder), total_reminders, file);
+
+    fclose(file);
+    printf("Loaded %d reminders from storage.\n", total_reminders);
+}
+// Save reminders to file
+void saveReminders() {
+    FILE *file = fopen(FILENAME, "wb");
+    if (file == NULL) {
+        printf("Error: Cannot save reminders!\n");
+        return;
+    }
+
+    fwrite(&total_reminders, sizeof(int), 1, file);
+    fwrite(reminders, sizeof(Reminder), total_reminders, file);
+
+    fclose(file);
+    printf("Reminders saved successfully!\n");
 }
