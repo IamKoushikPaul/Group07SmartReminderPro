@@ -14,8 +14,8 @@ typedef struct {
     char description[MAX_LENGTH];
     char category[MAX_LENGTH];
     char due_date[20];
-    int priority; // 1-5 scale
-    int completed; // 0 = pending, 1 = completed
+    int priority;
+    int completed;
     time_t created_at;
 } Reminder;
 
@@ -52,7 +52,7 @@ int main() {
                 sortReminders();
                 break;
             case 6:
-                categorizeReminder(NULL); // View categories
+                categorizeReminder(NULL);
                 break;
             case 7:
                 printf("\nSaving reminders...\n");
@@ -103,3 +103,68 @@ void saveReminders() {
     fclose(file);
     printf("Reminders saved successfully!\n");
 }
+
+// Add a new reminder
+void addReminder() {
+    if (total_reminders >= MAX_REMINDERS) {
+        printf("\nMaximum reminders limit reached!\n");
+        return;
+    }
+
+    Reminder new_reminder;
+
+    printf("\nADD NEW REMINDER\n");
+
+    new_reminder.id = total_reminders + 1;
+
+    getStringInput("Enter title: ", new_reminder.title, MAX_LENGTH);
+    getStringInput("Enter description: ", new_reminder.description, MAX_LENGTH);
+
+    // Category selection
+    printf("\nSelect category:\n");
+    printf("1. Personal\n");
+    printf("2. Work\n");
+    printf("3. Shopping\n");
+    printf("4. Health\n");
+    printf("5. Finance\n");
+    printf("6. Education\n");
+    printf("7. Other\n");
+
+    int cat_choice = getValidIntInput("Choose category (1-7): ", 1, 7);
+
+    switch(cat_choice) {
+        case 1: strcpy(new_reminder.category, "Personal"); break;
+        case 2: strcpy(new_reminder.category, "Work"); break;
+        case 3: strcpy(new_reminder.category, "Shopping"); break;
+        case 4: strcpy(new_reminder.category, "Health"); break;
+        case 5: strcpy(new_reminder.category, "Finance"); break;
+        case 6: strcpy(new_reminder.category, "Education"); break;
+        case 7: strcpy(new_reminder.category, "Other"); break;
+    }
+
+    getStringInput("Enter due date (DD/MM/YYYY): ", new_reminder.due_date, 20); // time , nF,
+
+    printf("\nSet priority (1-5, where 5 is highest):\n");
+    new_reminder.priority = getValidIntInput("Priority: ", 1, 5);
+
+    new_reminder.completed = 0;
+    new_reminder.created_at = time(NULL);
+
+    reminders[total_reminders] = new_reminder;
+    total_reminders++;
+
+    printf("\nReminder added successfully! (ID: %d)\n", new_reminder.id);
+}
+void viewAllReminders(){
+
+}
+
+// Mark reminder as completed
+void markAsCompleted() {
+
+}
+
+void searchReminder() {
+
+}
+//due f
