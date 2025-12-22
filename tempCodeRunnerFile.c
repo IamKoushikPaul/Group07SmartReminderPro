@@ -25,16 +25,6 @@ int total_reminders = 0;
 // Function prototypes
 void loadReminders();
 void saveReminders();
-void addReminder();
-void viewAllReminders();
-void markAsCompleted();
-void searchReminder();
-void sortReminders();
-void categorizeReminder(char* category);
-void displayReminder(Reminder r);
-void displayMenu();
-int getValidIntInput(const char* prompt, int min, int max);
-void getStringInput(const char* prompt, char* buffer, int max_length);
 
 int main() {
     loadReminders();
@@ -349,6 +339,118 @@ void sortReminders() {
                sorted[i].category,
                sorted[i].due_date,
                sorted[i].title);
+    }
+}
+// Categorize reminders
+void categorizeReminder(char* category) {
+    if (total_reminders == 0) {
+        printf("\nNo reminders to categorize!\n");
+        return;
+    }
+
+    char categories[MAX_REMINDERS][MAX_LENGTH]; // Count reminders per category
+    int category_count[MAX_REMINDERS] = {0};
+    int unique_categories = 0;
+
+    for(int i = 0; i < total_reminders; i++) {
+        int found = 0;
+        for(int j = 0; j < unique_categories; j++) {
+            if (strcmp(categories[j], reminders[i].category) == 0) {
+                category_count[j]++;
+                found = 1;
+                break;
+            }
+        }
+        if (!found) {
+            strcpy(categories[unique_categories], reminders[i].category);
+            category_count[unique_categories] = 1;
+            unique_categories++;
+        }
+    }
+
+    printf("\nCATEGORY OVERVIEW\n");
+    printf("Category | Count |\n");
+    printf("-------------------------\n");
+
+    for(int i = 0; i < unique_categories; i++) {
+        printf("%-13s | %-5d |\n", categories[i], category_count[i]);
+    }
+
+    // If a specific category is requested, show its reminders
+    if (category != NULL) {
+        printf("\nREMINDERS IN CATEGORY: %s\n", category);
+        int found = 0;
+        for(int i = 0; i < total_reminders; i++) {
+            if (strcmp(reminders[i].category, category) == 0) {
+                displayReminder(reminders[i]);
+                found = 1;
+            }
+        }
+        if (!found) {
+            printf("No reminders found in this category.\n");
+        }
+    }
+}
+
+// Display a single reminder in detail
+void displayReminder(Reminder r) {
+    printf("\n\n");
+    printf("ID: %d | Priority: %d/5 | Status: %s\n",
+           r.id, r.priority, r.completed ? "Completed" : "Pending");
+    printf("Category: %s | Due: %s\n", r.category, r.due_date);
+    printf("Title: %s\n", r.title);
+    printf("Description: %s\n", r.description);
+
+    char time_str[26]; // Convert creation time to readable format
+    struct tm* time_info = localtime(&r.created_at);
+    strftime(time_str, 26, "%Y-%m-%d %H:%M:%S", time_info);
+    printf("Created: %s\n", time_str);
+    printf("\n");
+}
+
+// Display main menu
+void displayMenu() {
+    system("clear || cls"); // Clear screen for Linux/Windows
+
+    
+    printf("SMART REMINDER PRO v1.0\n");
+    printf("Total Reminders: %-3d\n", total_reminders);
+    printf("1. Add New Reminder\n");
+    printf("2. View All Reminders\n");
+    printf("3. Mark as Completed\n");
+    printf("4. Search Reminder\n");
+    printf("5. Sort Reminders\n");
+    printf("6. Categorize Reminders\n");
+    printf("7. Save Reminders\n");
+    printf("8. Exit\n");
+}
+// Utility function for integer input validation
+int getValidIntInput(const char* prompt, int min, int max) {
+    int value;
+    char buffer[100];
+
+    while(1) {
+        printf("%s", prompt);
+        fgets(buffer, sizeof(buffer), stdin);
+
+        if (sscanf(buffer, "%d", &value) == 1) {
+            if (value >= min && value <= max) {
+                return value;
+            }
+        }
+        printf("Invalid input! Please enter a number between %d and %d.\n", min, max);
+    }
+}
+// Utility function for string input
+void getStringInput(const char* prompt, char* buffer, int max_length) {
+    printf("%s", prompt);
+    fgets(buffer, max_length, stdin);
+    
+    buffer[strcspn(buffer, "\n")] = 0; // Remove trailing newline
+
+    if (strlen(buffer) == 0) { // If input is empty, ask again
+        printf("Input cannot be empty! ");
+        getStringInput(prompt, buffer, max_length);
     }
 }
 
