@@ -1,28 +1,29 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 #include <time.h>
 
 #define MAX_REMINDERS 100
 #define MAX_LENGTH 200
 #define FILENAME "reminders.dat"
-// Structure for Reminder
+
+// Reminder structure
 typedef struct {
     int id;
     char title[MAX_LENGTH];
     char description[MAX_LENGTH];
     char category[MAX_LENGTH];
-    char due_date[20];
-    int priority;
-    int completed;
+    char due_date[20];      // DD/MM/YYYY HH:MM
+    time_t due_time;        // For accurate sorting
+    int priority;           // 1–5
+    int completed;          // 0 = Pending, 1 = Done
     time_t created_at;
 } Reminder;
 
 Reminder reminders[MAX_REMINDERS];
 int total_reminders = 0;
 
-// Function prototypes
+/* Function Prototypes */
 void loadReminders();
 void saveReminders();
 void addReminder();
@@ -38,7 +39,6 @@ void getStringInput(const char* prompt, char* buffer, int max_length);
 
 int main() {
     loadReminders();
-
     int choice;
 
     do {
@@ -65,70 +65,53 @@ int main() {
                 categorizeReminder(NULL);
                 break;
             case 7:
-                printf("\nSaving reminders...\n");
                 saveReminders();
-                break;
+            break;
             case 8:
-                printf("\nExiting Smart Reminder Pro. Goodbye!\n");
                 saveReminders();
+                printf("\nExiting Smart Reminder Pro. Goodbye!\n");
                 break;
-            default:
-                printf("\nInvalid choice! Please try again.\n");
         }
 
-        printf("\nPress Enter to continue...");
-        getchar();
-        getchar();
-
+        if (choice != 8) {
+            printf("\nPress Enter to continue...");
+            getchar();
+            getchar();
+        }
     } while(choice != 8);
 
     return 0;
 }
 
-// Load reminders from file
+/* File Handling */
 void loadReminders() {
     FILE *file = fopen(FILENAME, "rb");
-    if (file == NULL) {
-        total_reminders = 0;
-        return;
-    }
+    if (!file) return;
 
     fread(&total_reminders, sizeof(int), 1, file);
     fread(reminders, sizeof(Reminder), total_reminders, file);
-
     fclose(file);
-    printf("Loaded %d reminders from storage.\n", total_reminders);
 }
-// Save reminders to file
+
 void saveReminders() {
     FILE *file = fopen(FILENAME, "wb");
-    if (file == NULL) {
-        printf("Error: Cannot save reminders!\n");
-        return;
-    }
+    if (!file) return;
 
     fwrite(&total_reminders, sizeof(int), 1, file);
     fwrite(reminders, sizeof(Reminder), total_reminders, file);
-
     fclose(file);
-    printf("Reminders saved successfully!\n");
 }
 
-// Add a new reminder
+/* Add Reminder */
 void addReminder() {
-    if (total_reminders >= MAX_REMINDERS) {
-        printf("\nMaximum reminders limit reached!\n");
-        return;
-    }
+    if (total_reminders >= MAX_REMINDERS) return;
 
-    Reminder new_reminder;
+    Reminder r;
+    r.id = total_reminders + 1;
 
     printf("\nADD NEW REMINDER\n");
-
-    new_reminder.id = total_reminders + 1;
-
-    getStringInput("Enter title: ", new_reminder.title, MAX_LENGTH);
-    getStringInput("Enter description: ", new_reminder.description, MAX_LENGTH);
+    getStringInput("Title: ", r.title, MAX_LENGTH);
+    getStringInput("Description: ", r.description, MAX_LENGTH);
 
     // Category selection
     printf("\nSelect category:\n");
@@ -139,216 +122,177 @@ void addReminder() {
     printf("5. Finance\n");
     printf("6. Education\n");
     printf("7. Other\n");
+    int c = getValidIntInput("Choose: ", 1, 7);
 
-    int cat_choice = getValidIntInput("Choose category (1-7): ", 1, 7);
+    const char *cats[] = {
+        "Personal","Work","Shopping","Health",
+        "Finance","Education","Other"
+    };
+    strcpy(r.category, cats[c-1]);
 
-    switch(cat_choice) {
-        case 1: strcpy(new_reminder.category, "Personal"); break;
-        case 2: strcpy(new_reminder.category, "Work"); break;
-        case 3: strcpy(new_reminder.category, "Shopping"); break;
-        case 4: strcpy(new_reminder.category, "Health"); break;
-        case 5: strcpy(new_reminder.category, "Finance"); break;
-        case 6: strcpy(new_reminder.category, "Education"); break;
-        case 7: strcpy(new_reminder.category, "Other"); break;
-    }
+    getStringInput(
+        "Due date & time (DD/MM/YYYY HH:MM): ",
+        r.due_date,
+        20
+    );
 
-    getStringInput("Enter due date (DD/MM/YYYY): ", new_reminder.due_date, 20); // time , nF,
+    struct tm tm_due = {0};
+    sscanf(r.due_date, "%d/%d/%d %d:%d",
+           &tm_due.tm_mday,
+           &tm_due.tm_mon,
+           &tm_due.tm_year,
+           &tm_due.tm_hour,
+           &tm_due.tm_min);
 
-    printf("\nSet priority (1-5, where 5 is highest):\n");
-    new_reminder.priority = getValidIntInput("Priority: ", 1, 5);
+    tm_due.tm_mon -= 1;
+    tm_due.tm_year -= 1900;
+    r.due_time = mktime(&tm_due);
 
-    new_reminder.completed = 0;
-    new_reminder.created_at = time(NULL);
+    r.priority = getValidIntInput("Priority (1-5): ", 1, 5);
+    r.completed = 0;
+    r.created_at = time(NULL);
 
-    reminders[total_reminders] = new_reminder;
-    total_reminders++;
-
-    printf("\nReminder added successfully! (ID: %d)\n", new_reminder.id);
+    reminders[total_reminders++] = r;
+    printf("\nReminder added successfully!\n");
 }
-void viewAllReminders(){
-if (total_reminders == 0) {
-        printf("\nNo reminders found!\n");
+
+/* View All */
+void viewAllReminders() {
+    if (total_reminders == 0) {
+        printf("\nNo reminders!\n");
         return;
     }
 
-    printf("\nALL REMINDERS (%d total)\n", total_reminders);
-    printf("\n");
-    printf("ID  | Status  | Priority | Category   | Due Date   | Title\n");
-    printf("\n");
+    printf("\nID | Status | Pr | Category   | Due Date & Time   | Title\n");
+    printf("------------------------------------------------------------\n");
 
     for(int i = 0; i < total_reminders; i++) {
-        printf("%-3d | %-7s | %-8d | %-10s | %-10s | %s\n",
-               reminders[i].id,
-               reminders[i].completed ? "Done" : "Pending",
-               reminders[i].priority,
-               reminders[i].category,
-               reminders[i].due_date,
-               reminders[i].title);
+        printf("%-2d | %-6s | %-2d | %-10s | %-16s | %s\n",
+            reminders[i].id,
+            reminders[i].completed ? "Done" : "Pend",
+            reminders[i].priority,
+            reminders[i].category,
+            reminders[i].due_date,
+            reminders[i].title
+        );
     }
 }
 
-// Mark reminder as completed
+/* Mark Completed */
 void markAsCompleted() {
-if (total_reminders == 0) {
-        printf("\nNo reminders to mark as completed!\n");
-        return;
-    }
-
     viewAllReminders();
-
-    int id = getValidIntInput("\nEnter reminder ID to mark as completed (0 to cancel): ", 0, total_reminders);
-
+    int id = getValidIntInput("Enter ID (0 cancel): ", 0, total_reminders);
     if (id == 0) return;
 
     for(int i = 0; i < total_reminders; i++) {
         if (reminders[i].id == id) {
-            if (reminders[i].completed) {
-                printf("Reminder is already marked as completed!\n");
-            } else {
-                reminders[i].completed = 1;
-                printf("Reminder '%s' marked as completed!\n", reminders[i].title);
-                saveReminders();
-            }
+            reminders[i].completed = 1;
+            printf("Marked as completed!\n");
             return;
         }
     }
-
-    printf("Reminder with ID %d not found!\n", id);
 }
-// Search reminder
+
+/* Search */
 void searchReminder() {
-if (total_reminders == 0) {
-        printf("\nNo reminders to search!\n");
-        return;
-    }
+    char key[MAX_LENGTH];
+    getStringInput("Search title: ", key, MAX_LENGTH);
 
-    printf("\nSEARCH REMINDER\n");
-    printf("1. Search by Title\n");
-    printf("2. Search by Category\n");
-    printf("3. Search by Priority\n");
-    printf("4. Search by Status (Completed/Pending)\n");
-
-    int choice = getValidIntInput("Choose search option: ", 1, 4);
-    char search_term[MAX_LENGTH];
-    int search_int;
-    int found = 0;
-
-    switch(choice) {
-        case 1:
-            getStringInput("Enter title to search: ", search_term, MAX_LENGTH);
-            printf("\nSearch Results for '%s':\n", search_term);
-            for(int i = 0; i < total_reminders; i++) {
-                if (strstr(reminders[i].title, search_term) != NULL) {
-                    displayReminder(reminders[i]);
-                    found = 1;
-                }
-            }
-            break;
-
-        case 2:
-            printf("\nAvailable categories:\n");
-            categorizeReminder(NULL);
-            getStringInput("Enter category to search: ", search_term, MAX_LENGTH);
-            printf("\nReminders in category '%s':\n", search_term);
-            for(int i = 0; i < total_reminders; i++) {
-                if (strcmp(reminders[i].category, search_term) == 0) {
-                    displayReminder(reminders[i]);
-                    found = 1;
-                }
-            }
-            break;
-
-        case 3:
-            search_int = getValidIntInput("Enter priority (1-5): ", 1, 5);
-            printf("\nReminders with priority %d:\n", search_int);
-            for(int i = 0; i < total_reminders; i++) {
-                if (reminders[i].priority == search_int) {
-                    displayReminder(reminders[i]);
-                    found = 1;
-                }
-            }
-            break;
-
-        case 4:
-            printf("\n1. Completed\n2. Pending\n");
-            search_int = getValidIntInput("Select status: ", 1, 2);
-            printf("\n%s reminders:\n", search_int == 1 ? "Completed" : "Pending");
-            for(int i = 0; i < total_reminders; i++) {
-                if ((search_int == 1 && reminders[i].completed) ||
-                    (search_int == 2 && !reminders[i].completed)) {
-                    displayReminder(reminders[i]);
-                    found = 1;
-                }
-            }
-            break;
-    }
-
-    if (!found) {
-        printf("No reminders found matching your search criteria.\n");
+    for(int i = 0; i < total_reminders; i++) {
+        if (strstr(reminders[i].title, key)) {
+            displayReminder(reminders[i]);
+        }
     }
 }
-// Sort reminders
+
+/* Sort */
 void sortReminders() {
-    if (total_reminders == 0) {
-        printf("\nNo reminders to sort!\n");
-        return;
-    }
-    printf("\nSORT REMINDERS\n");
-    printf("1. Sort by Priority (High to Low)\n");
-    printf("2. Sort by Due Date\n");
-    printf("3. Sort by Category\n");
-    printf("4. Sort by Status\n");
-    printf("5. Sort by Creation Date\n");
+    printf(" 1.Priority \n 2.Due Time \n 3.Category \n 4.Status \n 5.Created Time\n");
+    int c = getValidIntInput("Choose: ", 1, 5);
 
-    int choice = getValidIntInput("Choose sorting option: ", 1, 5);
-    
-    Reminder sorted[MAX_REMINDERS]; // Create a copy array for sorting
-    memcpy(sorted, reminders, sizeof(Reminder) * total_reminders);
-
-    for(int i = 0; i < total_reminders - 1; i++) {   // Bubble sort implementation
-        for(int j = 0; j < total_reminders - i - 1; j++) {
+    for(int i=0;i<total_reminders-1;i++) {
+        for(int j=0;j<total_reminders-i-1;j++) {
             int swap = 0;
 
-            switch(choice) {
-                case 1: // Sort by priority
-                    if (sorted[j].priority < sorted[j+1].priority) swap = 1;
-                    break;
-                case 2: // Sort by due date
-                    if (strcmp(sorted[j].due_date, sorted[j+1].due_date) > 0) swap = 1;
-                    break;
-                case 3: // Sort by category
-                    if (strcmp(sorted[j].category, sorted[j+1].category) > 0) swap = 1;
-                    break;
-                case 4: // Sort by status
-                    if (sorted[j].completed > sorted[j+1].completed) swap = 1;
-                    break;
-                case 5: // Sort by creation date
-                    if (sorted[j].created_at < sorted[j+1].created_at) swap = 1;
-                    break;
-            }
+            if (c==1 && reminders[j].priority < reminders[j+1].priority) swap=1;
+            if (c==2 && reminders[j].due_time > reminders[j+1].due_time) swap=1;
+            if (c==3 && strcmp(reminders[j].category, reminders[j+1].category) > 0) swap=1;
+            if (c==4 && reminders[j].completed > reminders[j+1].completed) swap=1;
+            if (c==5 && reminders[j].created_at < reminders[j+1].created_at) swap=1;
 
             if (swap) {
-                Reminder temp = sorted[j];
-                sorted[j] = sorted[j+1];
-                sorted[j+1] = temp;
+                Reminder t = reminders[j];
+                reminders[j] = reminders[j+1];
+                reminders[j+1] = t;
             }
         }
     }
 
-    // Display sorted reminders
-    printf("\nSORTED REMINDERS\n");
-    printf("\n");
-    printf("ID  | Status  | Priority | Category   | Due Date   | Title\n");
-    printf("\n");
+    viewAllReminders();
+}
 
-    for(int i = 0; i < total_reminders; i++) {
-        printf("%-3d | %-7s | %-8d | %-10s | %-10s | %s\n",
-               sorted[i].id,
-               sorted[i].completed ? "Done" : "Pending",
-               sorted[i].priority,
-               sorted[i].category,
-               sorted[i].due_date,
-               sorted[i].title);
+/* Categorize */
+void categorizeReminder(char* category) {
+    char cats[20][MAX_LENGTH];
+    int count[20]={0}, n=0;
+
+    for(int i=0;i<total_reminders;i++) {
+        int found=0;
+        for(int j=0;j<n;j++)
+            if(strcmp(cats[j], reminders[i].category)==0){
+                count[j]++; found=1;
+            }
+        if(!found){
+            strcpy(cats[n], reminders[i].category);
+            count[n++] = 1;
+        }
+    }
+
+    printf("\nCategory | Count\n");
+    for(int i=0;i<n;i++)
+        printf("%-10s | %d\n", cats[i], count[i]);
+}
+
+/* Display Single */
+void displayReminder(Reminder r) {
+    printf("\n[%d] %s (%s)\nPriority:%d Status:%s\nDue:%s\n%s\n",
+        r.id, r.title, r.category,
+        r.priority,
+        r.completed ? "Done":"Pending",
+        r.due_date,
+        r.description
+    );
+}
+
+/* Menu */
+void displayMenu() {
+    system("cls||clear");
+    printf("SMART REMINDER PRO\n");
+    printf("Total Reminders: %d\n\n", total_reminders);
+     printf("1. Add New Reminder\n");
+    printf("2. View All Reminders\n");
+    printf("3. Mark as Completed\n");
+    printf("4. Search Reminder\n");
+    printf("5. Sort Reminders\n");
+    printf("6. Categorize Reminders\n");
+    printf("7. Save Reminders\n");
+    printf("8. Exit\n");
+}
+
+/* Input Helpers */
+int getValidIntInput(const char* p, int min, int max) {
+    int v;
+    char b[50];
+    while(1){
+        printf("%s", p);
+        fgets(b, sizeof(b), stdin);
+        if(sscanf(b,"%d",&v)==1 && v>=min && v<=max) return v;
+        printf("Invalid!\n");
     }
 }
 
+void getStringInput(const char* p, char* b, int m) {
+    printf("%s", p);
+    fgets(b, m, stdin);
+    b[strcspn(b,"\n")] = 0;
+}
