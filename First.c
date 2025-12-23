@@ -296,3 +296,4 @@ void getStringInput(const char* p, char* b, int m) {
     fgets(b, m, stdin);
     b[strcspn(b,"\n")] = 0;
 }
+// Koushik 2205
