@@ -15,7 +15,7 @@ typedef struct {
     char category[MAX_LENGTH];
     char due_date[20];      // DD/MM/YYYY HH:MM
     time_t due_time;        // For accurate sorting
-    int priority;           // 1–5
+    int priority;           // 1–5 (Auto assigned)
     int completed;          // 0 = Pending, 1 = Done
     time_t created_at;
 } Reminder;
@@ -31,11 +31,12 @@ void viewAllReminders();
 void markAsCompleted();
 void searchReminder();
 void sortReminders();
-void categorizeReminder(char* category);
+void categorizeReminder();
 void displayReminder(Reminder r);
 void displayMenu();
 int getValidIntInput(const char* prompt, int min, int max);
 void getStringInput(const char* prompt, char* buffer, int max_length);
+void updatePriority(Reminder *r);
 
 int main() {
     loadReminders();
@@ -46,27 +47,17 @@ int main() {
         choice = getValidIntInput("Enter your choice: ", 1, 8);
 
         switch(choice) {
-            case 1:
-                addReminder();
-                break;
-            case 2:
-                viewAllReminders();
-                break;
-            case 3:
-                markAsCompleted();
-                break;
-            case 4:
-                searchReminder();
-                break;
+            case 1: addReminder(); break;
+            case 2: viewAllReminders(); break;
+            case 3: markAsCompleted(); break;
+            case 4: searchReminder(); break;
             case 5:
+                for (int i = 0; i < total_reminders; i++)
+                    updatePriority(&reminders[i]);
                 sortReminders();
                 break;
-            case 6:
-                categorizeReminder(NULL);
-                break;
-            case 7:
-                saveReminders();
-            break;
+            case 6: categorizeReminder(); break;
+            case 7: saveReminders(); break;
             case 8:
                 saveReminders();
                 printf("\nExiting Smart Reminder Pro. Goodbye!\n");
@@ -81,6 +72,17 @@ int main() {
     } while(choice != 8);
 
     return 0;
+}
+
+/* Auto Update Priority Function */
+void updatePriority(Reminder *r) {
+    double hours_left = difftime(r->due_time, time(NULL)) / 3600.0;
+
+    if (hours_left <= 24) r->priority = 5;
+    else if (hours_left <= 72) r->priority = 4;
+    else if (hours_left <= 168) r->priority = 3;
+    else if (hours_left <= 720) r->priority = 2;
+    else r->priority = 1;
 }
 
 /* File Handling */
@@ -115,13 +117,7 @@ void addReminder() {
 
     // Category selection
     printf("\nSelect category:\n");
-    printf("1. Personal\n");
-    printf("2. Work\n");
-    printf("3. Shopping\n");
-    printf("4. Health\n");
-    printf("5. Finance\n");
-    printf("6. Education\n");
-    printf("7. Other\n");
+    printf("1. Personal\n2. Work\n3. Shopping\n4. Health\n5. Finance\n6. Education\n7. Other\n");
     int c = getValidIntInput("Choose: ", 1, 7);
 
     const char *cats[] = {
@@ -130,11 +126,7 @@ void addReminder() {
     };
     strcpy(r.category, cats[c-1]);
 
-    getStringInput(
-        "Due date & time (DD/MM/YYYY HH:MM): ",
-        r.due_date,
-        20
-    );
+    getStringInput("Due date & time (DD/MM/YYYY HH:MM): ", r.due_date, 20);
 
     struct tm tm_due = {0};
     sscanf(r.due_date, "%d/%d/%d %d:%d",
@@ -148,11 +140,13 @@ void addReminder() {
     tm_due.tm_year -= 1900;
     r.due_time = mktime(&tm_due);
 
-    r.priority = getValidIntInput("Priority (1-5): ", 1, 5);
+    // Auto priority assignment
+    updatePriority(&r);
     r.completed = 0;
     r.created_at = time(NULL);
 
     reminders[total_reminders++] = r;
+    printf("Auto-assigned Priority: %d (based on due time)\n", r.priority);
     printf("\nReminder added successfully!\n");
 }
 
@@ -198,27 +192,29 @@ void searchReminder() {
     char key[MAX_LENGTH];
     getStringInput("Search title: ", key, MAX_LENGTH);
 
+    int found = 0;
     for(int i = 0; i < total_reminders; i++) {
         if (strstr(reminders[i].title, key)) {
             displayReminder(reminders[i]);
+            found = 1;
         }
     }
+    if (!found) printf("\nNo match found!\n");
 }
 
 /* Sort */
 void sortReminders() {
-    printf(" 1.Priority \n 2.Due Time \n 3.Category \n 4.Status \n 5.Created Time\n");
-    int c = getValidIntInput("Choose: ", 1, 5);
+    int c = getValidIntInput("Sort by: 1.Priority 2.Due Time 3.Category 4.Status 5.Created Time\nChoose: ", 1, 5);
 
     for(int i=0;i<total_reminders-1;i++) {
         for(int j=0;j<total_reminders-i-1;j++) {
             int swap = 0;
 
             if (c==1 && reminders[j].priority < reminders[j+1].priority) swap=1;
-            if (c==2 && reminders[j].due_time > reminders[j+1].due_time) swap=1;
-            if (c==3 && strcmp(reminders[j].category, reminders[j+1].category) > 0) swap=1;
-            if (c==4 && reminders[j].completed > reminders[j+1].completed) swap=1;
-            if (c==5 && reminders[j].created_at < reminders[j+1].created_at) swap=1;
+            else if (c==2 && reminders[j].due_time > reminders[j+1].due_time) swap=1;
+            else if (c==3 && strcmp(reminders[j].category, reminders[j+1].category) > 0) swap=1;
+            else if (c==4 && reminders[j].completed < reminders[j+1].completed) swap=1;
+            else if (c==5 && reminders[j].created_at < reminders[j+1].created_at) swap=1;
 
             if (swap) {
                 Reminder t = reminders[j];
@@ -232,7 +228,7 @@ void sortReminders() {
 }
 
 /* Categorize */
-void categorizeReminder(char* category) {
+void categorizeReminder() {
     char cats[20][MAX_LENGTH];
     int count[20]={0}, n=0;
 
@@ -249,13 +245,14 @@ void categorizeReminder(char* category) {
     }
 
     printf("\nCategory | Count\n");
+    printf("-------------------\n");
     for(int i=0;i<n;i++)
         printf("%-10s | %d\n", cats[i], count[i]);
 }
 
-/* Display Single */
+/* Display Single Reminder */
 void displayReminder(Reminder r) {
-    printf("\n[%d] %s (%s)\nPriority:%d Status:%s\nDue:%s\n%s\n",
+    printf("\n[%d] %s (%s)\nPriority:%d  Status:%s\nDue:%s\nNote:%s\n",
         r.id, r.title, r.category,
         r.priority,
         r.completed ? "Done":"Pending",
@@ -269,14 +266,7 @@ void displayMenu() {
     system("cls||clear");
     printf("SMART REMINDER PRO\n");
     printf("Total Reminders: %d\n\n", total_reminders);
-     printf("1. Add New Reminder\n");
-    printf("2. View All Reminders\n");
-    printf("3. Mark as Completed\n");
-    printf("4. Search Reminder\n");
-    printf("5. Sort Reminders\n");
-    printf("6. Categorize Reminders\n");
-    printf("7. Save Reminders\n");
-    printf("8. Exit\n");
+    printf("1. Add New Reminder\n2. View All Reminders\n3. Mark as Completed\n4. Search Reminder\n5. Sort Reminders\n6. Categorize Reminders\n7. Save Reminders\n8. Exit\n");
 }
 
 /* Input Helpers */
@@ -296,4 +286,3 @@ void getStringInput(const char* p, char* b, int m) {
     fgets(b, m, stdin);
     b[strcspn(b,"\n")] = 0;
 }
-// Koushik 2205
