@@ -240,3 +240,47 @@ void viewAllReminders() {
                reminders[i].completed ? "Done" : "Pending");
     }
 }
+
+
+
+void editReminder() {
+    int id;
+    viewAllReminders();
+    printf("Enter Reminder ID to edit: ");
+    scanf("%d", &id);
+
+    for (int i = 0; i < total_reminders; i++) {
+        if (reminders[i].id == id) {
+
+            printf("New Title: ");
+            scanf(" %[^\n]", reminders[i].title);
+
+            printf("New Category: ");
+            scanf("%s", reminders[i].category);
+
+            printf("New Priority (1-5): ");
+            scanf("%d", &reminders[i].priority);
+
+            int d,m,y,hh,mm;
+            struct tm t = {0};
+
+            printf("Enter New Date (DD MM YYYY): ");
+            scanf("%d %d %d", &d,&m,&y);
+
+            printf("Enter New Time (HH MM): ");
+            scanf("%d %d", &hh,&mm);
+
+            t.tm_mday = d;
+            t.tm_mon = m - 1;
+            t.tm_year = y - 1900;
+            t.tm_hour = hh;
+            t.tm_min = mm;
+
+            reminders[i].due_time = mktime(&t);
+
+            printf("Reminder updated!\n");
+            return;
+        }
+    }
+    printf("Reminder not found!\n");
+}
