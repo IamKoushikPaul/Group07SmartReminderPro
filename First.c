@@ -284,3 +284,155 @@ void editReminder() {
     }
     printf("Reminder not found!\n");
 }
+
+void deleteReminder() {
+    int id;
+    viewAllReminders();
+    printf("Enter Reminder ID to delete: ");
+    scanf("%d", &id);
+
+    for (int i = 0; i < total_reminders; i++) {
+        if (reminders[i].id == id) {
+            for (int j = i; j < total_reminders - 1; j++)
+                reminders[j] = reminders[j + 1];
+
+            total_reminders--;
+            printf("Reminder deleted!\n");
+            return;
+        }
+    }
+    printf("Reminder not found!\n");
+}
+
+
+void markAsCompleted() {
+    int id;
+    viewAllReminders();
+    printf("Enter ID: ");
+    scanf("%d", &id);
+
+    for (int i = 0; i < total_reminders; i++) {
+        if (reminders[i].id == id) {
+            reminders[i].completed = 1;
+            saveReminders();
+            printf("Marked as completed!\n");
+        }
+    }
+}
+
+
+void showUpcomingNotifications() {
+    time_t now = time(NULL);
+
+    for (int p = 5; p >= 1; p--) {
+        for (int i = 0; i < total_reminders; i++) {
+            if (!reminders[i].completed &&
+                reminders[i].priority == p) {
+
+                double mins = difftime(reminders[i].due_time, now) / 60;
+
+                if (mins > 0 && mins <= 30) {
+                    printf("\nALERT [P%d]: %s due in %.0f minutes!\n",
+                           p, reminders[i].title, mins);
+                }
+            }
+        }
+    }
+}
+
+
+/* ================= MISSED LOG ================= */
+void logMissedReminders() {
+    FILE *fp = fopen(MISSED_FILE, "a");
+    time_t now = time(NULL);
+
+    for (int i = 0; i < total_reminders; i++) {
+        if (!reminders[i].completed &&
+            difftime(reminders[i].due_time, now) < 0) {
+            fprintf(fp, "Missed: %s\n", reminders[i].title);
+        }
+    }
+    fclose(fp);
+}
+/* ================= HELP ================= */
+void showHelp() {
+    printf("\n--- HELP ---\n");
+    printf("1. Add reminder date, time and info\n");
+    printf("2. Delete reminder\n");
+    printf("3. Edit reminder date, time and info\n");
+    printf("4. View all reminders\n");
+    printf("5. Mark reminder as completed\n");
+    printf("6. Open dashboard menu\n");
+    printf("8. Save & exit\n");
+}
+
+void showHelpDashboard() {
+    printf("\n--- HELP ---\n");
+    printf("1. Use backup to save all data\n");
+    printf("2. Restore data from backup file\n");
+    printf("3. Export data to text file\n");
+}
+
+/* ================= DASHBOARD ================= */
+void dashboardMenu() {
+    int ch;
+    do {
+        int done = 0;
+        for (int i = 0; i < total_reminders; i++)
+            if (reminders[i].completed) done++;
+
+        printf("\n--- DASHBOARD ---\n");
+        printf("User: %s\n", currentUser.username);
+        printf("Total: %d | Done: %d | Pending: %d\n",
+               total_reminders, done, total_reminders - done);
+
+        printf("\n1.Backup\n2.Restore\n3.Export\n4.Help\n0.Back\n");
+        scanf("%d", &ch);
+
+        switch (ch) {
+            case 1: backupData(); break;
+            case 2: restoreData(); break;
+            case 3: exportData(); break;
+            case 4: showHelpDashboard(); break;
+        }
+    } while (ch != 0);
+}
+
+/* ================= MAIN MENU ================= */
+int main() {
+    int ch;
+
+    printf("1. Signup\n2. Login\nChoose: ");
+    scanf("%d", &ch);
+    if (ch == 1) signup();
+    if (!login()) return 0;
+
+    loadReminders();
+
+    do {
+        showUpcomingNotifications();
+        // reminderAlert();
+        logMissedReminders();
+
+        printf("\n1.Add\n2.Delete\n3.Edit\n4.View\n5.Complete\n6.Dashboard\n7.Help\n8.Exit\n");
+        scanf("%d", &ch);
+
+        switch (ch) {
+            case 1: addReminder();
+                    sortReminders(); break;
+            case 2: deleteReminder();
+                    sortReminders(); break;
+            case 3: editReminder();
+                    viewAllReminders(); break;
+            case 4: sortReminders();
+                    viewAllReminders(); break;
+            case 5: markAsCompleted();
+                    sortReminders(); break;
+            case 6: dashboardMenu(); break;
+            case 7: showHelp(); break;
+            case 8: saveReminders(); break;
+        }
+    } while (ch != 8);
+
+    return 0;
+}
